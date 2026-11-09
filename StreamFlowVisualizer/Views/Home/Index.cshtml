@@ -1,0 +1,345 @@
+@model HomeViewModel
+@using System.Text.Json
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101616">
+  <meta name="description" content="Explore Washington Department of Ecology streamflow observations by watershed and station.">
+  <title>@Model.Title</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://code.highcharts.com/12.4.0/highcharts.js"></script>
+  <script src="https://code.highcharts.com/12.4.0/highcharts-more.js"></script>
+  <script src="https://code.highcharts.com/12.4.0/modules/heatmap.js"></script>
+  <script src="https://code.highcharts.com/12.4.0/modules/accessibility.js"></script>
+  <script type="module">
+    import { initTheme } from '/theme.js';
+    initTheme();
+  </script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="app-shell d-flex flex-column" data-view="split">
+    <header class="topbar navbar">
+      <a class="brand navbar-brand" asp-controller="Home" asp-action="Index" aria-label="Streamflow home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none">
+            <path d="M4 11c4.2 0 4.2-4 8.4-4s4.2 4 8.4 4 4.2-4 7.2-4M4 18c4.2 0 4.2-4 8.4-4s4.2 4 8.4 4 4.2-4 7.2-4M4 25c4.2 0 4.2-4 8.4-4s4.2 4 8.4 4 4.2-4 7.2-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="brand-name">FIELD<span>/</span>FLOW</span>
+      </a>
+      <div class="topbar-center">
+        <span class="eyebrow">WASHINGTON · CONTINUOUS MONITORING</span>
+        <span class="topbar-separator" aria-hidden="true"></span>
+        <span class="eyebrow">STATEWIDE STATIONS</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="theme-toggle" data-theme-toggle type="button" aria-label="Switch to light mode">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <span class="data-status@(Model.ErrorMessage is not null ? " is-error" : Model.HasData ? " is-ready" : "")"><span class="status-dot" aria-hidden="true"></span><span id="status-label">@Model.StatusMessage</span></span>
+        <a class="source-link" id="source-link" href="@Model.SourceUrl" target="_blank" rel="noreferrer">SOURCE <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <nav class="view-switcher" aria-label="Workspace view" hidden>
+      <span class="view-switcher-label">VIEW</span>
+      <button type="button" data-view-option="split" aria-pressed="true">Split</button>
+      <button type="button" data-view-option="map" aria-pressed="false">Map</button>
+      <button type="button" data-view-option="dashboard" aria-pressed="false">Dashboard</button>
+    </nav>
+
+    <main class="dashboard-content row g-0 flex-grow-1">
+      <section class="map-column col" id="map-column" aria-label="Streamflow map">
+        <div class="map-region">
+          <div id="map" role="application" aria-label="Map of selected streamflow station">
+            <div class="map-loading" id="map-loading">Loading map layers…</div>
+          </div>
+          <div class="map-heading">
+            <span class="map-kicker">FIELD OBSERVATION <span class="map-kicker-line" aria-hidden="true"></span> <span id="map-kicker-station">@Model.StationId</span></span>
+            <h1 id="station-name">@Model.StationName</h1>
+            <p id="station-subtitle">@Model.SelectedWriaName · @(Model.IsActive ? "active telemetry" : "historical station")</p>
+          </div>
+          <div class="map-wria-control" id="selector-panel">
+            <button class="selector-toggle" id="selector-toggle" type="button" aria-expanded="true" aria-controls="selector-fields" aria-label="Collapse watershed and station selectors"><span aria-hidden="true">‹</span></button>
+            <div class="selector-fields" id="selector-fields">
+            <label class="form-label" for="wria-select">WATERSHED / WRIA</label>
+            <select class="form-select form-select-sm" id="wria-select" name="wria" form="dashboard-filter" disabled="@(Model.Wrias.Count == 0)">
+              @foreach (var wria in Model.Wrias)
+              {
+                  if (wria.Value == Model.SelectedWriaValue)
+                  {
+                      <option value="@wria.Value" selected>@wria.Name</option>
+                  }
+                  else
+                  {
+                      <option value="@wria.Value">@wria.Name</option>
+                  }
+              }
+            </select>
+            <label class="form-label" for="station-select">STATION (OPTIONAL)</label>
+            <select class="form-select form-select-sm" id="station-select" name="stationId" form="dashboard-filter" disabled="@(Model.Stations.Count == 0)">
+              @foreach (var item in Model.Stations)
+              {
+                  if (item.Id == Model.SelectedStation?.Id)
+                  {
+                      <option value="@item.Id" selected>@item.Name (@item.Id)</option>
+                  }
+                  else
+                  {
+                      <option value="@item.Id">@item.Name (@item.Id)</option>
+                  }
+              }
+            </select>
+            </div>
+          </div>
+          <div class="map-selection-hint">CLICK A STATION TO LOAD ITS DATA</div>
+          <details class="map-layer-control">
+            <summary aria-label="Toggle map layers">LAYERS</summary>
+            <div class="map-layer-panel">
+              <label><input id="globe-toggle" type="checkbox" checked> Globe</label>
+              <label><input id="terrain-toggle" type="checkbox" checked> 3D terrain</label>
+              <label><input id="streams-toggle" type="checkbox" checked> Streams</label>
+              <div class="parameter-layer-group" role="group" aria-label="Parameter layers">
+                <span class="parameter-layer-heading">MAP LAYERS</span>
+                <div id="parameter-layer-list"><span class="parameter-layer-empty">Loading…</span></div>
+              </div>
+            </div>
+          </details>
+          <div class="map-controls" aria-label="Map controls">
+            <button class="btn map-button" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+            <button class="btn map-button" id="zoom-out" type="button" aria-label="Zoom out">−</button>
+            <span class="map-control-rule" aria-hidden="true"></span>
+            <button class="btn map-button recenter-button" id="recenter" type="button" aria-label="Recenter on station">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="5.5" stroke="currentColor"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3" stroke="currentColor" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div class="map-footer">
+            <div class="map-footer-left">
+              <span class="map-scale" id="map-scale">Station location</span>
+              <span class="map-flow-readout"><span>GAUGE</span><strong id="map-flow-value">— CFS</strong></span>
+            </div>
+            <span class="map-note"><span class="legend-line" aria-hidden="true"></span> ACTIVE REACH <span class="legend-ripple" aria-hidden="true"></span> <span id="map-playback-note">PLAY RIPPLES FOLLOW FLOW · ILLUSTRATIVE</span></span>
+          </div>
+          <div class="station-popup" id="station-popup" hidden>
+            <span class="popup-label" id="popup-label">STREAMFLOW GAUGE</span>
+            <strong id="popup-name">Selected station</strong>
+            <span id="popup-value">Waiting for observation…</span>
+          </div>
+          <div class="map-error" id="map-error" role="alert" hidden>Map layers could not be loaded. Check your connection and reload.</div>
+        </div>
+      </section>
+
+      <aside class="inspector-column col-auto" id="inspector-column" aria-label="Station details">
+        <div class="inspector">
+          <div class="inspector-heading">
+            <span class="section-label"><span class="section-index">01</span> GAUGE PROFILE</span>
+            <span class="record-badge badge rounded-pill"><span aria-hidden="true"></span> <span id="station-status-label">ACTIVE</span></span>
+          </div>
+
+          <form id="dashboard-filter" asp-controller="Home" asp-action="Index" method="get" hidden></form>
+          <input type="hidden" name="view" id="view-input" form="dashboard-filter" disabled>
+          <div class="flow-reading">
+            <div class="reading-label"><span id="parameter-name">DISCHARGE</span> <span class="unit-label" id="unit-label">@(Model.Flow?.Unit.ToUpperInvariant() ?? "FT³/S")</span></div>
+            <div class="reading-value"><span id="flow-value">@Model.FlowValue</span><span class="reading-unit" id="reading-unit">cfs</span></div>
+            <div class="reading-detail"><span class="change-indicator@(Model.ChangeIsNegative ? " is-negative" : "")" id="change-indicator">@Model.ChangeIndicator</span><span id="reading-time">@(Model.HasData ? $"Selected · {Model.LatestRecordText} PT" : Model.ErrorMessage ?? "No observations available")</span></div>
+            <p class="flow-scope-note">Values are measured at the station; the highlighted stream reach is illustrative, not a reach-level measurement.</p>
+          </div>
+
+          <div class="inspector-divider"></div>
+
+          <!-- Chart Tabs Navigation -->
+          <div class="chart-tabs">
+            <div class="tab-nav" role="tablist" aria-label="Chart views">
+              <button class="tab-button" role="tab" aria-selected="true" aria-controls="flow-tab" data-tab="flow" id="flow-tab-btn">Flow</button>
+              <button class="tab-button" role="tab" aria-selected="false" aria-controls="compare-tab" data-tab="compare" id="compare-tab-btn">Seasonal Comparison</button>
+              <button class="tab-button" role="tab" aria-selected="false" aria-controls="params-tab" data-tab="params" id="params-tab-btn">Parameters</button>
+            </div>
+          </div>
+
+          <!-- Flow Tab -->
+          <div class="tab-content" id="flow-tab" role="tabpanel" aria-labelledby="flow-tab-btn">
+            <div class="chart-heading">
+              <div>
+                <span class="section-label" id="chart-title">DISCHARGE HISTORY</span>
+                <span class="chart-range" id="chart-range">Last @Model.SelectedDays days</span>
+              </div>
+              <label class="period-select-label" for="period-select">RANGE
+                <select class="form-select form-select-sm" id="period-select" name="days" form="dashboard-filter" aria-label="Observation period">
+                  @foreach (var period in new[] { 7, 30, 90, 365 })
+                  {
+                      if (period == Model.SelectedDays)
+                      {
+                          <option value="@period" selected>@(period)D</option>
+                      }
+                      else
+                      {
+                          <option value="@period">@(period)D</option>
+                      }
+                  }
+                </select>
+              </label>
+            </div>
+            <div class="chart-container">
+              <div class="flow-chart" id="flow-chart" role="img" aria-label="Discharge history chart" aria-describedby="chart-description"></div>
+              <p class="chart-empty-state" id="chart-empty-state" hidden>No observations are available for this parameter and period.</p>
+            </div>
+            <div class="chart-resize-handle" data-chart-resize="history" role="separator" tabindex="0" aria-label="Resize history chart" aria-orientation="horizontal" aria-valuemin="96" aria-valuemax="600" aria-valuenow="132" aria-controls="flow-chart"></div>
+            <p class="visually-hidden" id="chart-description">@(Model.ChartDescription ?? Model.ErrorMessage ?? "Waiting for discharge observations.")</p>
+            <div class="chart-endpoints"><span id="chart-start">—</span><span id="chart-end">—</span></div>
+
+            <div class="chart-settings" id="chart-settings" hidden>
+              <span>Drag a chart's bottom edge to resize it for this view.</span>
+            </div>
+          </div>
+
+          <!-- Compare Tab -->
+          <div class="tab-content" id="compare-tab" role="tabpanel" aria-labelledby="compare-tab-btn" hidden>
+            <div class="comparison-panel" id="comparison-panel">
+              <div class="comparison-controls">
+                <label>Parameter
+                  <select class="form-select form-select-sm" id="comparison-parameter" disabled></select>
+                </label>
+                <label>Comparison
+                  <select class="form-select form-select-sm" id="comparison-mode">
+                    <option value="month">Calendar months</option>
+                    <option value="season">Seasons</option>
+                    <option value="water">Water years (Oct–Sep)</option>
+                  </select>
+                </label>
+                <label id="comparison-month-label">Month
+                  <select class="form-select form-select-sm" id="comparison-month">
+                    @for (var month = 1; month <= 12; month++)
+                    {
+                        <option value="@month">@System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(month)</option>
+                    }
+                  </select>
+                </label>
+                <label id="comparison-season-label" hidden>Season
+                  <select class="form-select form-select-sm" id="comparison-season">
+                    <option value="winter">Winter (Dec–Feb, ending year)</option>
+                    <option value="spring">Spring (Mar–May)</option>
+                    <option value="summer">Summer (Jun–Aug)</option>
+                    <option value="fall">Fall (Sep–Nov)</option>
+                  </select>
+                </label>
+                <label id="comparison-calendar-label">Latest calendar year
+                  <input class="form-control form-control-sm" id="comparison-calendar-year" type="number" min="1900">
+                </label>
+                <label id="comparison-season-year-label" hidden>Latest season year
+                  <input class="form-control form-control-sm" id="comparison-season-year" type="number" min="1900">
+                </label>
+                <label id="comparison-water-label" hidden>Latest water year
+                  <input class="form-control form-control-sm" id="comparison-water-year" type="number" min="1901">
+                </label>
+                <label>Number of years
+                  <select class="form-select form-select-sm" id="comparison-years">
+                    <option value="all">All available</option>
+                    @foreach (var years in new[] { 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 })
+                    {
+                        <option value="@years" selected="@(years == 5)">@years</option>
+                    }
+                  </select>
+                </label>
+                <label>Chart view
+                  <select class="form-select form-select-sm" id="comparison-view">
+                    <option value="summary">Summary</option>
+                    <option value="lines">Original observation lines</option>
+                    <option value="daily">Daily median lines</option>
+                    <option value="band">Across-year median and range</option>
+                    <option value="box">Distribution</option>
+                  </select>
+                </label>
+                <button class="btn comparison-button" id="comparison-load" type="button" disabled>Compare</button>
+              </div>
+              <p class="comparison-status" id="comparison-status" role="status">Choose a parameter and select Compare.</p>
+              <div id="comparison-chart-area" hidden>
+                <div id="comparison-chart" class="comparison-chart"></div>
+                <div class="chart-resize-handle" data-chart-resize="comparison" role="separator" tabindex="0" aria-label="Resize comparison chart" aria-orientation="horizontal" aria-valuemin="160" aria-valuemax="800" aria-valuenow="260" aria-controls="comparison-chart"></div>
+                <details class="comparison-table-details">
+                  <summary>Show summary values and coverage</summary>
+                  <div class="comparison-table-container">
+                    <table class="comparison-table">
+                      <caption>Median of daily medians and days with at least one observation</caption>
+                      <thead><tr><th scope="col">Period</th><th scope="col">Median</th><th scope="col">Days with data</th><th scope="col">Readings</th></tr></thead>
+                      <tbody id="comparison-table-body"></tbody>
+                    </table>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parameters Tab (placeholder for future layer cards) -->
+          <div class="tab-content" id="params-tab" role="tabpanel" aria-labelledby="params-tab-btn" hidden>
+            <div class="layer-section" id="layer-section" hidden>
+              <div class="inspector-divider"></div>
+              <span class="section-label">STATION PARAMETERS</span>
+              <div id="layer-cards"></div>
+            </div>
+            <div class="parameters-content" id="parameters-content">
+              <p class="parameters-empty" id="parameters-empty">No additional parameters available for this station.</p>
+            </div>
+            <input type="hidden" name="layers" id="layers-input" form="dashboard-filter" value="">
+          </div>
+
+          <div class="row g-0 stats-row">
+            <div class="col stat-cell"><span class="stat-label">PERIOD MAX</span><strong id="period-max">@Model.PeriodMaximum</strong><span id="period-max-unit">cfs</span></div>
+            <div class="col stat-cell"><span class="stat-label">PERIOD MIN</span><strong id="period-min">@Model.PeriodMinimum</strong><span id="period-min-unit">cfs</span></div>
+            <div class="col stat-cell"><span class="stat-label">READINGS</span><strong id="observation-count">@Model.ObservationCount</strong><span>samples</span></div>
+          </div>
+
+          <div class="inspector-divider"></div>
+          <div class="station-meta">
+            <span class="section-label">MONITORING SITE</span>
+            <div class="meta-row"><span>Station</span><strong id="station-id">@Model.StationId</strong></div>
+            <div class="meta-row"><span>Coordinates</span><strong id="coordinates">@Model.CoordinatesText</strong></div>
+            <div class="meta-row"><span>Data interval</span><strong id="data-interval">—</strong></div>
+            <div class="meta-row"><span>Latest record</span><strong id="latest-record">@Model.LatestRecordText</strong></div>
+          </div>
+
+          <div class="inspector-foot">
+            <span class="source-mark">WA</span>
+            <span>WASHINGTON DEPARTMENT<br>OF ECOLOGY</span>
+            <button class="btn" id="refresh-data" type="submit" form="dashboard-filter" aria-label="Refresh selected parameter observations">↻</button>
+          </div>
+          <p class="data-error" id="data-error" role="alert" hidden="@(Model.ErrorMessage is null)">@Model.ErrorMessage</p>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="timeline" aria-label="Observation playback controls">
+      <button class="btn play-button" id="play-button" type="button" aria-label="Play observations" disabled>
+        <svg id="play-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5v13l10-6.5-10-6.5Z" fill="currentColor"/></svg>
+      </button>
+      <div class="timeline-body">
+        <div class="timeline-topline">
+          <span class="section-label">TIME SCRUBBER</span>
+          <span class="timeline-date" id="timeline-date">@(Model.HasData ? Model.LatestRecordText : "Waiting for station data…")</span>
+          <label class="speed-select-label" for="speed-select">SPEED
+            <select class="form-select form-select-sm" id="speed-select" aria-label="Playback speed">
+              <option value="1">1×</option>
+              <option value="8" selected>8×</option>
+              <option value="24">24×</option>
+            </select>
+          </label>
+        </div>
+        <input class="form-range" id="time-slider" type="range" min="0" max="@(Math.Max((Model.Flow?.Observations.Count ?? 0) - 1, 0))" value="@(Math.Max((Model.Flow?.Observations.Count ?? 0) - 1, 0))" step="1" aria-label="Select a parameter observation" disabled="@(!Model.HasData)">
+        <div class="timeline-labels"><span id="timeline-start">—</span><span id="timeline-current">@(Model.HasData ? Model.LatestRecordText : "—")</span><span id="timeline-end">@(Model.HasData ? Model.LatestRecordText : "—")</span></div>
+      </div>
+      <div class="timeline-reading">
+        <span class="timeline-reading-label">SELECTED VALUE</span>
+        <strong><span id="timeline-flow">@Model.FlowValue</span><small id="timeline-unit">cfs</small></strong>
+      </div>
+    </footer>
+  </div>
+  <script id="dashboard-state" type="application/json">@Html.Raw(JsonSerializer.Serialize(Model.InitialData, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
+</body>
+</html>
