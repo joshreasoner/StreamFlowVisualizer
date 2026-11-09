@@ -30,10 +30,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore StreamFlowVisualizer/StreamFlowVisualizer.csproj
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build StreamFlowVisualizer/StreamFlowVisualizer.csproj --configuration Release --no-restore
 
       - name: Publish
         run: dotnet publish StreamFlowVisualizer/StreamFlowVisualizer.csproj -c Release -o ./publish
