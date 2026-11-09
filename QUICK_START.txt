@@ -1,0 +1,59 @@
+# Quick Command Reference
+
+## Push to GitHub
+
+Once you've created a repository on GitHub, run these commands in PowerShell:
+
+```powershell
+cd C:\Projects\Tinkering
+
+# Add remote repository
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+
+# Push to main branch
+git push -u origin main
+
+# Verify remote
+git remote -v
+```
+
+## Local Git Commands
+
+```powershell
+# Check status
+git status
+
+# View commits
+git log --oneline
+
+# Make changes
+git add .
+git commit -m "Your message"
+git push
+
+# Create a new branch (optional)
+git checkout -b feature-name
+git push -u origin feature-name
+```
+
+## Repository is Ready to Push
+
+✅ Repository initialized on `main` branch
+✅ `.gitignore` added
+✅ GitHub Actions workflow configured
+✅ Setup guide created
+
+Current branches:
+- main (default)
+
+Last commits:
+- 7fac1bf - Add GitHub setup guide
+- 16669bf - Initial commit: Initialize StreamFlowVisializer project with GitHub Pages deployment
+
+## Next: Push to GitHub
+
+1. Create repo at https://github.com/new
+2. Run the commands above with YOUR_USERNAME and repo name
+3. Enable GitHub Pages in Settings → Pages
+4. Select "GitHub Actions" as source
+5. Done! Your site will deploy automatically
