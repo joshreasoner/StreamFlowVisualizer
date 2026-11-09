@@ -1,0 +1,2 @@
+{"data": [\n  {\n    "id": 1,\n    "name": "Station 1",\n    "lat": 47.1234,\n    "lon": -122.3456,\n    "v": 12.9479\n  },\n  {\n    "id": 2,\n    "name": "Station 2",\n    "lat": 46.2345,\n    "lon": -121.4567,\n    "v": 13.1884\n  },\n  {\n    "id": 3,\n    "name": "Station 3",\n    "lat": 45.3456,\n    "lon": -120.5678,\n    "v": 12.9479\n  }
+  ]}

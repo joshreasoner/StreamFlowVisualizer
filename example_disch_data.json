@@ -1,0 +1,71 @@
+[
+  {
+    "description": {
+      "uniqueId": "7a43d8ba-9cd2-4d02-bb81-f9862f9d4b32",
+      "label": "Flow Derived",
+      "parameterIdentifier": "Discharge",
+      "parameterDisplayName": "Discharge",
+      "type": "ProcessorDerived",
+      "periodStart": "2026-10-25T00:00:00",
+      "periodEnd": "2026-11-01T18:30:00",
+      "isParameterStale": false,
+      "unit": "ft^3/s",
+      "gapToleranceMinutes": 15,
+      "styleIndex": 0,
+      "grades": {
+        "-1": "Unspecified"
+      },
+      "approvals": {
+        "800": "Working"
+      },
+      "qualifiers": {
+
+      },
+      "methods": {
+        "1": "None"
+      }
+    },
+    "results": [
+      {
+        "d": "2026-10-25T00:00:00",
+        "v": 12.9479,
+        "g": -1,
+        "a": 800,
+        "m": 1,
+        "waterYear": 2027
+      },
+      {
+        "d": "2026-10-25T00:15:00",
+        "v": 13.1884,
+        "g": -1,
+        "a": 800,
+        "m": 1,
+        "waterYear": 2027
+      },
+      {
+        "d": "2026-10-25T00:30:00",
+        "v": 12.9479,
+        "g": -1,
+        "a": 800,
+        "m": 1,
+        "waterYear": 2027
+      },
+      {
+        "d": "2026-10-25T00:45:00",
+        "v": 12.9479,
+        "g": -1,
+        "a": 800,
+        "m": 1,
+        "waterYear": 2027
+      },
+      {
+        "d": "2026-10-25T01:00:00",
+        "v": 13.1884,
+        "g": -1,
+        "a": 800,
+        "m": 1,
+        "waterYear": 2027
+      }
+    ]
+  }
+]
