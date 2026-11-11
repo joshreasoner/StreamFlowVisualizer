@@ -79,6 +79,30 @@ Run the controller and external-service tests with:
 dotnet test .\tests\StreamFlowVisualizer.Tests\StreamFlowVisualizer.Tests.csproj
 ```
 
+## Deploy to Azure App Service
+
+The GitHub Actions workflow at `.github/workflows/deploy.yml` tests and publishes
+the app on pull requests, then deploys it to Azure App Service whenever changes
+are pushed to `main`.
+
+1. In the Azure portal, create a **Web App** using the **Free (F1)** App Service
+   plan, **Windows** operating system, and the **.NET 10** runtime stack. Choose a
+   globally unique app name; it becomes the `*.azurewebsites.net` host name.
+2. In the web app, open **Deployment Center** or **Overview** and download the
+   publish profile. Treat this file as a credential; don't commit it.
+3. In the GitHub repository, open **Settings → Secrets and variables → Actions**.
+   Add a repository variable named `AZURE_WEBAPP_NAME` with the exact app name,
+   and a repository secret named `AZURE_WEBAPP_PUBLISH_PROFILE` containing the
+   full publish-profile XML.
+4. Push to `main` and check the **Actions** tab for the workflow result. Once
+   deployed, open `https://<app-name>.azurewebsites.net`.
+
+The F1 plan is shared and has limited daily CPU and storage, and no production
+SLA. Confirm the selected plan and estimated charges in Azure before creating
+resources; Azure subscriptions can incur charges for other resources or usage
+outside the free allowance. Don't add a database or other paid resources for
+this app unless you need them.
+
 ## Data and map services
 
 - `GET /api/wrias` reads the available WRIAs from Ecology's Station Information

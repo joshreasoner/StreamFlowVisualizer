@@ -1,76 +1,41 @@
-# GitHub Setup Guide
+# Deploy StreamFlowVisualizer to Azure
 
-Your repository is now initialized and ready to push to GitHub. Follow these steps:
+The app requires ASP.NET Core for its MVC page and API endpoints, so GitHub
+Pages cannot host the complete application. The repository's GitHub Actions
+workflow deploys the app to Azure App Service instead.
 
-## Step 1: Create a GitHub Repository
+## 1. Create an Azure App Service
 
-1. Go to https://github.com/new
-2. Enter repository name: `StreamFlowVisualizer` (or your preferred name)
-3. Choose "Public" if you want it visible to everyone
-4. **Do NOT initialize with README, .gitignore, or license** (we already have these)
-5. Click "Create repository"
+In the Azure portal, create a **Web App** with these settings:
 
-## Step 2: Configure Your Local Repository
+- **Publish:** Code
+- **Runtime stack:** .NET 10
+- **Operating system:** Windows
+- **Pricing plan:** Free (F1)
+- **Name:** a globally unique name, which will be the `*.azurewebsites.net`
+  hostname
 
-After creating the repo on GitHub, you'll see commands to push. Use these commands:
+Review the plan and any charges shown in the portal before creating the resource.
+F1 is a shared, limited plan with no production SLA.
 
-```bash
-git remote add origin https://github.com/YOUR_USERNAME/StreamFlowVisualizer.git
-git branch -M main
-git push -u origin main
-```
+## 2. Add GitHub deployment settings
 
-Replace `YOUR_USERNAME` with your actual GitHub username.
+In the web app, download its publish profile and keep the XML private. In GitHub,
+open **Settings → Secrets and variables → Actions** and add:
 
-## Step 3: Enable GitHub Pages
+- Repository variable `AZURE_WEBAPP_NAME` with the web app's exact name.
+- Repository secret `AZURE_WEBAPP_PUBLISH_PROFILE` with the entire publish
+  profile XML.
 
-1. Go to your repository on GitHub
-2. Click **Settings** → **Pages**
-3. Under "Build and deployment":
-   - **Source**: Select "GitHub Actions"
-   - This will automatically use the workflow we created (`.github/workflows/deploy.yml`)
+Never commit the publish profile or paste it into source files.
 
-## Step 4: Wait for Deployment
+## 3. Deploy
 
-1. Go to your repository's **Actions** tab
-2. Watch for the workflow to complete
-3. Your site will be available at: `https://YOUR_USERNAME.github.io/StreamFlowVisualizer/`
+Push changes to `main`. The workflow runs the test suite and publishes the app;
+on a push (not a pull request), it deploys to App Service. Follow the run in the
+repository's **Actions** tab, then visit
+`https://<app-name>.azurewebsites.net`.
 
-## What We've Set Up
-
-- ✅ Git repository initialized on `main` branch
-- ✅ `.gitignore` configured for .NET projects (excludes build artifacts, bin/, obj/, etc.)
-- ✅ GitHub Actions workflow (`.github/workflows/deploy.yml`) that:
-  - Builds the .NET 10 project
-  - Publishes it as a static site
-  - Deploys to GitHub Pages on every push to `main`
-
-## Important Notes
-
-### About Your GitHub Username
-Update the git configuration with your real name and email:
-```bash
-git config user.name "Your Name"
-git config user.email "your.email@github.com"
-```
-
-### About the Application URL
-Since GitHub Pages serves from `/StreamFlowVisualizer/`, you may need to update your app's base path:
-- Update `appsettings.json` or use a base href in your HTML if needed
-- The ASP.NET Core app should handle this automatically in most cases
-
-### GitHub Pages Limitations
-- GitHub Pages hosts **static content only**
-- Your ASP.NET Core app must be fully client-side (SPA) or pre-built static HTML/JS
-- If you need backend APIs, consider Azure, Heroku, or Railway instead
-
-## Next Steps
-
-1. Push your code to GitHub
-2. Enable GitHub Pages in repository settings
-3. Watch the Actions tab for the build to complete
-4. Visit your GitHub Pages URL
-
-Questions? Check out:
-- https://docs.github.com/en/pages
-- https://docs.github.com/en/actions
+The workflow is defined in `.github/workflows/deploy.yml`. GitHub Pages should
+not be enabled as the app's hosting target: it only serves static files and
+cannot run this app's ASP.NET Core controllers.
